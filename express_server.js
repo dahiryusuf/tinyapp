@@ -7,6 +7,11 @@ app.use(bodyParser.urlencoded({extended: true}));
 
 app.set("view engine", "ejs");
 
+function generateRandomString() {
+  let ranId = (Math.random() + 1).toString(36).substring(7);
+  return ranId;
+}
+
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
