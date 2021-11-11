@@ -14,13 +14,17 @@ function generateRandomString() {
   return ranId;
 }
 
-function checkUser(email) {
+function checkUser(email,password) {
   for(let i in users){
    if(email === users[i].email){
-     return true 
+     if(password === users[i].password){
+      const info = users[i].id;
+      return { error: null, data: info };
+     }
+      return { error: "err1", data: false };
   }
 }
-  return false;
+  return { error: "err2", data: null };
 }
 
 const urlDatabase = {
@@ -37,22 +41,37 @@ const users = {
 }
 
 app.post("/login", (req, res) => {
-  res.cookie("username",req.body.username)
-  res.redirect(`/urls`)
+
+  const { email, password } = req.body;
+  const { data, error } = checkUser(email, password);
+  if (error === "err1") {
+		res.status(403).send('password doesn\'t match email given')
+    res.redirect(`/register`)
+	}
+  if (error === "err2") {
+		res.status(403).send('user doesn"t exist')
+    res.redirect(`/register`)
+	}
+    res.cookie("user_id",data)
+    res.redirect(`/urls`)
+
 });
 
 app.post("/register", (req, res) => {
   
   const { email, password } = req.body;
+  const { data, error } = checkUser(email, password);
   if(!email || !password){
     res.status(400).send('Email or password cannot be empty');
+    res.redirect(`/register`)
   }
-  if(checkUser(email)){
+  if(data === false){
     res.status(400).send('Email already exists');
+    res.redirect(`/register`)
   }
   const id = generateRandomString();
   users[id] = { id, email, password };
-  res.cookie("user_id",id)
+  res.cookie("user_id",id);
   res.redirect(`/urls`)
 });
 
@@ -71,12 +90,12 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-  const templateVars = { username: req.cookies["username"]};
+  const templateVars = { username: req.cookies["user_id"]};
   res.render("urls_login", templateVars);
 });
 
 app.get("/register", (req, res) => {
-  const templateVars = { username: req.cookies["username"]};
+  const templateVars = { username: req.cookies["user_id"]};
   res.render("urls_reg", templateVars);
 });
 
