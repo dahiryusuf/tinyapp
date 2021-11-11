@@ -13,7 +13,16 @@ function generateRandomString() {
   let ranId = (Math.random() + 1).toString(36).substring(7);
   return ranId;
 }
-
+function urlsForUser(id){
+  const key = Object.keys(urlDatabase);
+  let obj = {};
+  for(let val of key){
+    if(urlDatabase[val].userID === id){
+      obj [val] = urlDatabase[val].longURL
+    }
+  }
+  return obj;
+}
 function checkUser(email,password) {
   for(let i in users){
    if(email === users[i].email){
@@ -30,11 +39,11 @@ function checkUser(email,password) {
 const urlDatabase = {
     b6UTxQ: {
         longURL: "https://www.tsn.ca",
-        userID: "aJ48lW"
+        userID: "1234"
     },
     i3BoGr: {
         longURL: "https://www.google.ca",
-        userID: "aJ48lW"
+        userID: "12345555"
     }
 };
 
@@ -108,8 +117,9 @@ app.post("/urls", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const keys = Object.keys(urlDatabase);
-  const templateVars = { username: users[req.cookies["user_id"]], urls: urlDatabase, keys };
+  const urls = urlsForUser(req.cookies["user_id"])
+  console.log(urls)
+  const templateVars = { username: users[req.cookies["user_id"]], urls };
   res.render("urls_index", templateVars);
 });
 
@@ -119,6 +129,12 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
+  if(urlDatabase[req.params.shortURL] === undefined){
+    return res.send("This Url doesn't exist")
+  }
+  if(urlDatabase[req.params.shortURL].userID !== req.cookies["user_id"]){
+    return res.send("You don't have access to this url")
+  }
   const templateVars = {  username: users[req.cookies["user_id"]], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL};
   res.render("urls_show", templateVars);
 });
@@ -136,8 +152,19 @@ app.post("/urls/:shortURL/", (req, res) => {
   res.redirect(`/urls`)
 });
 
-app.post("/urls/:shortURL/delete", (req, res) => {
+app.get("/urls/:shortURL/delete", (req, res) => {
+  if(urlDatabase[req.params.shortURL].userID !== req.cookies["user_id"]){
+    return res.send("You don't have permission to delete this url")
+  }
   delete urlDatabase[req.params.shortURL]
+  res.redirect(`/urls`)
+});
+
+app.post("/urls/:shortURL/delete", (req, res) => {
+  if(urlDatabase[req.params.shortURL].userID !== req.cookies["user_id"]){
+    return res.send("You don't have permission to delete this url")
+  }
+  delete urlDatabase[req.params.shortURL].longURL
   res.redirect(`/urls`)
 });
 

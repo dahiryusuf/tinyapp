@@ -22,14 +22,18 @@
         </tr>
       </thead>
       <tbody>
-        <% for(let url of keys) { %>
+        <% if(username){ %>
+        <% for(let url in urls) { %>
           <tr>
             <td><%= url %></td>
-            <td><%= urls[url].longURL %></td>
+            <td><%= urls[url] %></td>
             <td><button type="button" class="btn btn-outline-primary"><a href="/urls/<%= url %>">Edit</a></a></button></td>
             <td><form method="POST" action="/urls/<%= url %>/delete"><input class = "btn btn-outline-danger" type="submit" value="Delete"></form></td>
           </tr>
         <% } %>
+        <% } else{ %>
+          <p>Please login or register to view URL's</p>
+          <% } %>
       </tbody>
     </table>
   </main>
