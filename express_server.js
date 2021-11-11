@@ -28,8 +28,14 @@ function checkUser(email,password) {
 }
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+    b6UTxQ: {
+        longURL: "https://www.tsn.ca",
+        userID: "aJ48lW"
+    },
+    i3BoGr: {
+        longURL: "https://www.google.ca",
+        userID: "aJ48lW"
+    }
 };
 
 const users = { 
@@ -80,12 +86,8 @@ app.post("/logout", (req, res) => {
   res.redirect(`/urls`)
 });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-}); 
-
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL]
+  const longURL = urlDatabase[req.params.shortURL].longURL
   res.redirect(longURL);
 });
 
@@ -101,12 +103,13 @@ app.get("/register", (req, res) => {
 
 app.post("/urls", (req, res) => {
   shortURL = generateRandomString();
-  urlDatabase[shortURL] = req.body.longURL;  
+  urlDatabase[shortURL] = { longURL: req.body.longURL, userID: users[req.cookies["user_id"]].id} 
   res.redirect(`/urls/${shortURL}`)
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { username: users[req.cookies["user_id"]], urls: urlDatabase };
+  const keys = Object.keys(urlDatabase);
+  const templateVars = { username: users[req.cookies["user_id"]], urls: urlDatabase, keys };
   res.render("urls_index", templateVars);
 });
 
@@ -116,7 +119,7 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = {  username: users[req.cookies["user_id"]], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]};
+  const templateVars = {  username: users[req.cookies["user_id"]], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL};
   res.render("urls_show", templateVars);
 });
 
@@ -129,7 +132,7 @@ app.get("/", (req, res) => {
 });
 
 app.post("/urls/:shortURL/", (req, res) => {
-  urlDatabase[req.params.shortURL] = req.body.longURL; 
+  urlDatabase[req.params.shortURL].longURL = req.body.longURL; 
   res.redirect(`/urls`)
 });
 
