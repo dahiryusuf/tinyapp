@@ -4,9 +4,12 @@ const PORT = 8080; // default port 8080
 
 const bcrypt = require('bcryptjs');
 const bodyParser = require("body-parser");
-const cookieParser = require('cookie-parser')
+const cookieSession = require('cookie-session')
 app.use(bodyParser.urlencoded({extended: true}));
-app.use(cookieParser())
+app.use(cookieSession({
+  name: 'session',
+  keys: ['key1', 'key2']
+}))
 
 app.set("view engine", "ejs");
 
@@ -52,7 +55,7 @@ const users = {
   "1234": {
     id: "1234", 
     email: "user@example.com", 
-    hashedPassword: "12345"
+    hashedPasssword: bcrypt.hashSync("12345", 10)
   },
 }
 
@@ -67,7 +70,7 @@ app.post("/login", (req, res) => {
 		return res.status(403).send('user doesn"t exist')
 	} 
  
-    res.cookie("user_id",data)
+    req.session["user_id"] = data;
     res.redirect(`/urls`)
 });
 
@@ -79,17 +82,17 @@ app.post("/register", (req, res) => {
   if(!email || !password){
     return res.status(400).send('Email or password cannot be empty');
   }
-  if(!data){
+  if(data === false){
     return res.status(400).send('Email already exists');
   }
   const id = generateRandomString();
   users[id] = { id, email, hashedPassword };
-  res.cookie("user_id",id);
+  req.session["user_id"] = id;
   res.redirect(`/urls`)
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id")
+  req.session = null
   res.redirect(`/urls`)
 });
 
@@ -102,32 +105,32 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
-  const templateVars = { username: req.cookies["user_id"]};
+  const templateVars = { username: req.session["user_id"]};
   res.render("urls_login", templateVars);
 });
 
 app.get("/register", (req, res) => {
-  const templateVars = { username: req.cookies["user_id"]};
+  const templateVars = { username: req.session["user_id"]};
   res.render("urls_reg", templateVars);
 });
 
 app.post("/urls", (req, res) => {
-  if(req.cookies["user_id"]){
+  if(!req.session["user_id"]){
     return res.send("Please login")
   }
   shortURL = generateRandomString();
-  urlDatabase[shortURL] = { longURL: req.body.longURL, userID: users[req.cookies["user_id"]].id} 
+  urlDatabase[shortURL] = { longURL: req.body.longURL, userID: users[req.session["user_id"]].id} 
   res.redirect(`/urls/${shortURL}`)
 });
 
 app.get("/urls", (req, res) => {
-  const urls = urlsForUser(req.cookies["user_id"])
-  const templateVars = { username: users[req.cookies["user_id"]], urls };
+  const urls = urlsForUser(req.session["user_id"])
+  const templateVars = { username: users[req.session["user_id"]], urls };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { username: users[req.cookies["user_id"]]};
+  const templateVars = { username: users[req.session["user_id"]]};
   res.render("urls_new", templateVars);
 });
 
@@ -135,13 +138,13 @@ app.get("/urls/:shortURL", (req, res) => {
   if(urlDatabase[req.params.shortURL] === undefined){
     return res.send("This Url doesn't exist")
   }
-  if(req.cookies["user_id"]){
+  if(!req.session["user_id"]){
     return res.send("Please login")
   }
-  if(urlDatabase[req.params.shortURL].userID !== req.cookies["user_id"]){
+  if(urlDatabase[req.params.shortURL].userID !== req.session["user_id"]){
     return res.send("You don't have access to this url")
   }
-  const templateVars = {  username: users[req.cookies["user_id"]], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL};
+  const templateVars = {  username: users[req.session["user_id"]], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL};
   res.render("urls_show", templateVars);
 });
 
@@ -150,7 +153,7 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.get("/", (req, res) => {
-  if(req.cookies["user_id"]){
+  if(req.session["user_id"]){
   res.redirect(`/urls`)
 }
 res.redirect(`/login`)
@@ -162,7 +165,7 @@ app.post("/urls/:shortURL/", (req, res) => {
 });
 
 app.get("/urls/:shortURL/delete", (req, res) => {
-  if(urlDatabase[req.params.shortURL].userID !== req.cookies["user_id"]){
+  if(urlDatabase[req.params.shortURL].userID !== req.session["user_id"]){
     return res.send("You don't have permission to delete this url")
   }
   delete urlDatabase[req.params.shortURL]
@@ -170,7 +173,7 @@ app.get("/urls/:shortURL/delete", (req, res) => {
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  if(urlDatabase[req.params.shortURL].userID !== req.cookies["user_id"]){
+  if(urlDatabase[req.params.shortURL].userID !== req.session["user_id"]){
     return res.send("You don't have permission to delete this url")
   }
   delete urlDatabase[req.params.shortURL].longURL
