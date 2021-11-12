@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 
+const bcrypt = require('bcryptjs');
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser')
 app.use(bodyParser.urlencoded({extended: true}));
@@ -26,7 +27,7 @@ function urlsForUser(id){
 function checkUser(email,password) {
   for(let i in users){
    if(email === users[i].email){
-     if(password === users[i].password){
+     if(bcrypt.compareSync(password, users[i].hashedPassword)) {
       const info = users[i].id;
       return { error: null, data: info };
      }
@@ -51,41 +52,38 @@ const users = {
   "1234": {
     id: "1234", 
     email: "user@example.com", 
-    password: "12345"
+    hashedPassword: "12345"
   },
 }
 
 app.post("/login", (req, res) => {
-
   const { email, password } = req.body;
   const { data, error } = checkUser(email, password);
+  console.log(users, data, error)
   if (error === "err1") {
-		res.status(403).send('password doesn\'t match email given')
-    res.redirect(`/register`)
+		return res.status(403).send('password doesn\'t match email given')
 	}
   if (error === "err2") {
-		res.status(403).send('user doesn"t exist')
-    res.redirect(`/register`)
-	}
+		return res.status(403).send('user doesn"t exist')
+	} 
+ 
     res.cookie("user_id",data)
     res.redirect(`/urls`)
-
 });
 
 app.post("/register", (req, res) => {
   
   const { email, password } = req.body;
+  const hashedPassword = bcrypt.hashSync(password, 10);
   const { data, error } = checkUser(email, password);
   if(!email || !password){
-    res.status(400).send('Email or password cannot be empty');
-    res.redirect(`/register`)
+    return res.status(400).send('Email or password cannot be empty');
   }
-  if(data === false){
-    res.status(400).send('Email already exists');
-    res.redirect(`/register`)
+  if(!data){
+    return res.status(400).send('Email already exists');
   }
   const id = generateRandomString();
-  users[id] = { id, email, password };
+  users[id] = { id, email, hashedPassword };
   res.cookie("user_id",id);
   res.redirect(`/urls`)
 });
@@ -96,6 +94,9 @@ app.post("/logout", (req, res) => {
 });
 
 app.get("/u/:shortURL", (req, res) => {
+  if(urlDatabase[req.params.shortURL] === undefined){
+    return res.send("This Url doesn't exist")
+  }
   const longURL = urlDatabase[req.params.shortURL].longURL
   res.redirect(longURL);
 });
@@ -111,6 +112,9 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
+  if(req.cookies["user_id"]){
+    return res.send("Please login")
+  }
   shortURL = generateRandomString();
   urlDatabase[shortURL] = { longURL: req.body.longURL, userID: users[req.cookies["user_id"]].id} 
   res.redirect(`/urls/${shortURL}`)
@@ -118,7 +122,6 @@ app.post("/urls", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const urls = urlsForUser(req.cookies["user_id"])
-  console.log(urls)
   const templateVars = { username: users[req.cookies["user_id"]], urls };
   res.render("urls_index", templateVars);
 });
@@ -132,6 +135,9 @@ app.get("/urls/:shortURL", (req, res) => {
   if(urlDatabase[req.params.shortURL] === undefined){
     return res.send("This Url doesn't exist")
   }
+  if(req.cookies["user_id"]){
+    return res.send("Please login")
+  }
   if(urlDatabase[req.params.shortURL].userID !== req.cookies["user_id"]){
     return res.send("You don't have access to this url")
   }
@@ -144,7 +150,10 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.get("/", (req, res) => {
+  if(req.cookies["user_id"]){
   res.redirect(`/urls`)
+}
+res.redirect(`/login`)
 });
 
 app.post("/urls/:shortURL/", (req, res) => {
