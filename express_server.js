@@ -54,14 +54,13 @@ app.post("/login", (req, res) => {
   }
   if (error === "err2") {
     return res.status(403).send('user doesn\'t exist');
-  }
+}
  
   req.session["user_id"] = data;
   res.redirect(`/urls`);
 });
 
 app.post("/register", (req, res) => {
-  
   const { email, password } = req.body;
   const hashedPassword = bcrypt.hashSync(password, 10);
   const { data, error } = checkUser(email, password, users);
@@ -79,19 +78,22 @@ app.post("/register", (req, res) => {
 
 app.post("/logout", (req, res) => {
   req.session = null;
-  res.redirect(`/urls`);
+  res.redirect(`/login`);
 });
 
 app.post("/urls", (req, res) => {
-  if (!req.session["user_id"]) {
-    return res.send("Please login");
-  }
   const shortURL = generateRandomString();
-  urlDatabase[shortURL] = { longURL: req.body.longURL, userID: users[req.session["user_id"]].id };
+  urlDatabase[shortURL] = { 
+    longURL: req.body.longURL, 
+    userID: users[req.session["user_id"]].id
+   };
   res.redirect(`/urls/${shortURL}`);
 });
 
 app.post("/urls/:shortURL/", (req, res) => {
+  if (!req.session["user_id"]) {
+    return res.send("Please login");
+  }
   urlDatabase[req.params.shortURL].longURL = req.body.longURL;
   res.redirect(`/urls`);
 });
@@ -105,27 +107,42 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
+  if (!req.session["user_id"]) {
+    return res.send("Please login");
+  }
   delete urlDatabase[req.params.shortURL];
   res.redirect(`/urls`);
 });
 
 app.get("/login", (req, res) => {
+  if (req.session["user_id"]) {
+   return res.redirect(`/urls`);
+  }
   const templateVars = { username: req.session["user_id"]};
   res.render("urls_login", templateVars);
 });
 
 app.get("/register", (req, res) => {
+  if (req.session["user_id"]) {
+    return res.redirect(`/urls`);
+  }
   const templateVars = { username: req.session["user_id"]};
   res.render("urls_reg", templateVars);
 });
 
 app.get("/urls", (req, res) => {
+  if (!req.session["user_id"]) {
+    return res.send("Please Login to view urls")
+  }
   const urls = urlsForUser(req.session["user_id"]);
   const templateVars = { username: users[req.session["user_id"]], urls };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
+  if (!req.session["user_id"]) {
+    return res.redirect(`/login`);
+  }
   const templateVars = { username: users[req.session["user_id"]]};
   res.render("urls_new", templateVars);
 });
@@ -140,7 +157,11 @@ app.get("/urls/:shortURL", (req, res) => {
   if (urlDatabase[req.params.shortURL].userID !== req.session["user_id"]) {
     return res.send("You don't have access to this url");
   }
-  const templateVars = {  username: users[req.session["user_id"]], shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL};
+  const templateVars = {  
+  username: users[req.session["user_id"]], 
+  shortURL: req.params.shortURL, 
+  longURL: urlDatabase[req.params.shortURL].longURL
+};
   res.render("urls_show", templateVars);
 });
 
@@ -150,17 +171,9 @@ app.get("/urls.json", (req, res) => {
 
 app.get("/", (req, res) => {
   if (req.session["user_id"]) {
-    res.redirect(`/urls`);
+    return res.redirect(`/urls`);
   }
   res.redirect(`/login`);
-});
-
-app.get("/urls/:shortURL/delete", (req, res) => {
-  if (urlDatabase[req.params.shortURL].userID !== req.session["user_id"]) {
-    return res.send("You don't have permission to delete this url");
-  }
-  delete urlDatabase[req.params.shortURL];
-  res.redirect(`/urls`);
 });
 
 app.listen(PORT, () => {
