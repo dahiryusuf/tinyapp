@@ -12,20 +12,5 @@ const checkUser = (email,password,user) => {
   return { error: "err2", data: null };
 }
 
-const generateRandomString = () => {
-  let ranId = (Math.random() + 1).toString(36).substring(7);
-  return ranId;
-}
 
-const urlsForUser = (id, urlDatabase) => {
-  const key = Object.keys(urlDatabase);
-  let obj = {};
-  for (let val of key) {
-    if (urlDatabase[val].userID === id) {
-      obj [val] = urlDatabase[val].longURL;
-    }
-  }
-  return obj;
-}
-
-module.exports =  checkUser, generateRandomString, urlsForUser
+module.exports =  checkUser
