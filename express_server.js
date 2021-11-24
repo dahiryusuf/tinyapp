@@ -82,6 +82,9 @@ app.post("/logout", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
+  if (!req.session["user_id"]) {
+    return res.status(401).send("Please login");
+  }
   const shortURL = generateRandomString();
   urlDatabase[shortURL] = { 
     longURL: req.body.longURL, 
@@ -92,7 +95,7 @@ app.post("/urls", (req, res) => {
 
 app.post("/urls/:shortURL/", (req, res) => {
   if (!req.session["user_id"]) {
-    return res.send("Please login");
+    return res.status(401).send("Please login");
   }
   urlDatabase[req.params.shortURL].longURL = req.body.longURL;
   res.redirect(`/urls`);
@@ -108,7 +111,7 @@ app.get("/u/:shortURL", (req, res) => {
 
 app.post("/urls/:shortURL/delete", (req, res) => {
   if (!req.session["user_id"]) {
-    return res.send("Please login");
+    return res.status(401).send("Please login");
   }
   delete urlDatabase[req.params.shortURL];
   res.redirect(`/urls`);
